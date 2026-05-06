@@ -1,6 +1,8 @@
 /// <reference lib="webworker" />
 
 import exifr from "exifr";
+import { siNikon } from "simple-icons";
+import type { SimpleIcon } from "simple-icons";
 import type {
   ExifDisplay,
   ExifSummary,
@@ -25,6 +27,17 @@ interface Palette {
   muted: string;
   hairline: string;
   accent: string;
+}
+
+interface BrandLogo {
+  pattern: RegExp;
+  icon: SimpleIcon;
+  crop: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 const palettes: Record<FrameStyle, Omit<Palette, "accent">> = {
@@ -80,6 +93,19 @@ const cameraBrands: Array<[RegExp, string]> = [
   [/olympus/i, "OLYMPUS"],
   [/om digital/i, "OM SYSTEM"],
   [/pentax/i, "PENTAX"]
+];
+
+const brandLogos: BrandLogo[] = [
+  {
+    pattern: /nikon/i,
+    icon: siNikon,
+    crop: {
+      x: 0,
+      y: 8.55,
+      width: 24,
+      height: 6.75
+    }
+  }
 ];
 
 const ctx = self as DedicatedWorkerGlobalScope;
@@ -535,17 +561,48 @@ function drawMetadata(
 
   const narrow = output.width < 920;
   if (narrow) {
-    drawFittedText(ctx2d, [exif.brand, cameraModel].filter(Boolean).join(" "), left, primaryY - metaSize * 0.55, right - left, primarySize, 600, palette.ink);
+    const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, primaryY - metaSize * 0.55, output.width * 0.28, primarySize, palette.ink);
+    const narrowModelX = left + logoWidth + Math.max(12, output.width * 0.014);
+    drawFittedText(ctx2d, cameraModel || camera || "CAMERA", narrowModelX, primaryY - metaSize * 0.55, right - narrowModelX, primarySize, 520, palette.muted);
     drawFittedText(ctx2d, settingLine, left, primaryY + metaSize * 0.9, right - left, metaSize, 560, palette.ink);
     drawFittedText(ctx2d, [lens, date].filter(Boolean).join("   "), left, secondaryY + smallSize * 0.9, right - left, smallSize, 400, palette.muted);
     return;
   }
 
-  const logoWidth = drawFittedText(ctx2d, exif.brand || "CAMERA", left, primaryY, output.width * 0.2, logoSize, 650, palette.ink);
+  const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, primaryY, output.width * 0.2, logoSize * 0.82, palette.ink);
   drawFittedText(ctx2d, cameraModel || camera || "CAMERA", left + logoWidth + Math.max(18, output.width * 0.018), primaryY, output.width * 0.28, primarySize, 500, palette.muted);
   drawFittedText(ctx2d, settingLine, right, primaryY, output.width * 0.46, metaSize, 560, palette.ink, "right");
   drawFittedText(ctx2d, lens || "Unknown lens", left, secondaryY, output.width * 0.5, smallSize, 400, palette.muted);
   drawFittedText(ctx2d, date || "No date", right, secondaryY, output.width * 0.28, smallSize, 400, palette.muted, "right");
+}
+
+function drawBrandLogo(
+  ctx2d: OffscreenCanvasRenderingContext2D,
+  brand: string,
+  x: number,
+  baselineY: number,
+  maxWidth: number,
+  maxHeight: number,
+  color: string
+) {
+  const logo = brandLogos.find((candidate) => candidate.pattern.test(brand));
+  if (!logo || typeof Path2D === "undefined") {
+    return drawFittedText(ctx2d, brand || "CAMERA", x, baselineY, maxWidth, maxHeight, 650, color);
+  }
+
+  const path = new Path2D(logo.icon.path);
+  const scale = Math.min(maxWidth / logo.crop.width, maxHeight / logo.crop.height);
+  const width = logo.crop.width * scale;
+  const height = logo.crop.height * scale;
+
+  ctx2d.save();
+  ctx2d.translate(x - logo.crop.x * scale, baselineY - height - logo.crop.y * scale);
+  ctx2d.scale(scale, scale);
+  ctx2d.fillStyle = color;
+  ctx2d.fill(path);
+  ctx2d.restore();
+
+  return width;
 }
 
 function drawFittedText(
