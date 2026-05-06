@@ -13,14 +13,18 @@ npm run dev
 
 ## Deploy
 
-项目使用 GitHub Actions 自动部署到 GitHub Pages。推送到 `main` 后会执行：
+项目已部署到 GitHub Pages：
+
+https://henry-insomniac.github.io/diy-exif/
+
+当前 Pages 来源是 `gh-pages` 分支根目录。部署前先构建：
 
 ```bash
 npm ci
 npm run build
 ```
 
-然后发布 `dist/`。
+然后把 `dist/` 内容发布到 `gh-pages` 分支。
 
 ## 大图处理策略
 
