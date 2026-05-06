@@ -50,6 +50,8 @@ const defaultSettings: RenderSettings = {
   exportSize: "social",
   outputFormat: "image/jpeg",
   quality: 0.92,
+  title: "",
+  author: "",
   showCamera: true,
   showLens: true,
   showDate: true
@@ -354,6 +356,35 @@ function App() {
                 value={Math.round(settings.quality * 100)}
                 disabled={settings.outputFormat === "image/png"}
                 onChange={(event) => updateSetting("quality", Number(event.target.value) / 100)}
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="control-block">
+          <div className="control-heading">
+            <span>作品信息</span>
+            <Camera size={16} aria-hidden="true" />
+          </div>
+          <div className="text-field-stack">
+            <label>
+              <span>标题</span>
+              <input
+                type="text"
+                maxLength={60}
+                placeholder="未命名作品"
+                value={settings.title}
+                onChange={(event) => updateSetting("title", event.target.value)}
+              />
+            </label>
+            <label>
+              <span>作者</span>
+              <input
+                type="text"
+                maxLength={40}
+                placeholder="摄影师姓名"
+                value={settings.author}
+                onChange={(event) => updateSetting("author", event.target.value)}
               />
             </label>
           </div>

@@ -786,8 +786,18 @@ function getMetadataLines(settings: RenderRequest["settings"], exif: ExifSummary
   const lens = settings.showLens ? exif.display.lens : "";
   const date = settings.showDate ? exif.display.date : "";
   const settingLine = exif.display.settingsLine || "EXIF unavailable";
+  const title = cleanDisplayText(settings.title);
+  const author = cleanDisplayText(settings.author);
 
-  return { camera, cameraModel, lens, date, settingLine };
+  return { camera, cameraModel, lens, date, settingLine, title, author };
+}
+
+function cleanDisplayText(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function byline(author: string) {
+  return author ? `BY ${author.toUpperCase()}` : "";
 }
 
 function drawSignatureMetadata(
@@ -807,7 +817,9 @@ function drawSignatureMetadata(
   const primarySize = clamp(Math.round(output.width * 0.032), 28, 130);
   const metaSize = clamp(Math.round(output.width * 0.026), 24, 105);
   const smallSize = clamp(Math.round(output.width * 0.019), 18, 76);
-  const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
+  const { camera, cameraModel, lens, date, settingLine, title, author } = getMetadataLines(settings, exif);
+  const secondaryLeft = [title || lens || "Unknown lens", author ? byline(author) : ""].filter(Boolean).join("  /  ");
+  const secondaryRight = [date || "No date"].filter(Boolean).join("");
 
   ctx2d.fillStyle = palette.accent;
   ctx2d.fillRect(left, output.height - Math.max(8, footerHeight * 0.09), Math.min(output.width * 0.16, footerHeight * 1.5), Math.max(4, footerHeight * 0.035));
@@ -818,15 +830,15 @@ function drawSignatureMetadata(
     const narrowModelX = left + logoWidth + Math.max(12, output.width * 0.014);
     drawFittedText(ctx2d, cameraModel || camera || "CAMERA", narrowModelX, primaryY - metaSize * 0.55, right - narrowModelX, primarySize, 520, palette.muted);
     drawFittedText(ctx2d, settingLine, left, primaryY + metaSize * 0.9, right - left, metaSize, 560, palette.ink);
-    drawFittedText(ctx2d, [lens, date].filter(Boolean).join("   "), left, secondaryY + smallSize * 0.9, right - left, smallSize, 400, palette.muted);
+    drawFittedText(ctx2d, [secondaryLeft, secondaryRight].filter(Boolean).join("   "), left, secondaryY + smallSize * 0.9, right - left, smallSize, 400, palette.muted);
     return;
   }
 
   const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, primaryY, output.width * 0.24, logoSize, palette.ink);
   drawFittedText(ctx2d, cameraModel || camera || "CAMERA", left + logoWidth + Math.max(18, output.width * 0.018), primaryY, output.width * 0.28, primarySize, 500, palette.muted);
   drawFittedText(ctx2d, settingLine, right, primaryY, output.width * 0.46, metaSize, 560, palette.ink, "right");
-  drawFittedText(ctx2d, lens || "Unknown lens", left, secondaryY, output.width * 0.5, smallSize, 400, palette.muted);
-  drawFittedText(ctx2d, date || "No date", right, secondaryY, output.width * 0.28, smallSize, 400, palette.muted, "right");
+  drawFittedText(ctx2d, secondaryLeft || lens || "Unknown lens", left, secondaryY, output.width * 0.58, smallSize, 400, palette.muted);
+  drawFittedText(ctx2d, secondaryRight || "No date", right, secondaryY, output.width * 0.28, smallSize, 400, palette.muted, "right");
 }
 
 function drawGalleryMetadata(
@@ -843,11 +855,12 @@ function drawGalleryMetadata(
   const logoSize = clamp(Math.round(output.width * 0.032), 28, 120);
   const titleSize = clamp(Math.round(output.width * 0.022), 20, 82);
   const detailSize = clamp(Math.round(output.width * 0.017), 16, 62);
-  const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
+  const { camera, cameraModel, lens, date, settingLine, title, author } = getMetadataLines(settings, exif);
+  const caption = [title, author ? byline(author) : ""].filter(Boolean).join("  /  ");
 
   const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.4, output.width * 0.16, logoSize, palette.ink);
   drawFittedText(ctx2d, cameraModel || camera || "CAMERA", left + logoWidth + output.width * 0.018, top + footerHeight * 0.4, output.width * 0.34, titleSize, 500, palette.muted);
-  drawFittedText(ctx2d, [lens, settingLine].filter(Boolean).join("  /  "), left, top + footerHeight * 0.66, output.width * 0.58, detailSize, 420, palette.muted);
+  drawFittedText(ctx2d, caption || [lens, settingLine].filter(Boolean).join("  /  "), left, top + footerHeight * 0.66, output.width * 0.58, detailSize, 420, palette.muted);
   drawFittedText(ctx2d, date || "No date", right, top + footerHeight * 0.66, output.width * 0.24, detailSize, 420, palette.muted, "right");
 }
 
@@ -866,13 +879,14 @@ function drawEditorialMetadata(
   const titleSize = clamp(Math.round(output.width * 0.032), 26, 124);
   const metaSize = clamp(Math.round(output.width * 0.023), 20, 88);
   const smallSize = clamp(Math.round(output.width * 0.017), 16, 66);
-  const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
+  const { camera, cameraModel, lens, date, settingLine, title, author } = getMetadataLines(settings, exif);
+  const headline = title || cameraModel || camera || "CAMERA";
 
   const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.42, output.width * 0.23, logoSize, palette.ink);
-  drawFittedText(ctx2d, cameraModel || camera || "CAMERA", left, top + footerHeight * 0.67, output.width * 0.4, titleSize, 520, palette.ink);
+  drawFittedText(ctx2d, headline, left, top + footerHeight * 0.67, output.width * 0.4, titleSize, 520, palette.ink);
   drawFittedText(ctx2d, settingLine, right, top + footerHeight * 0.37, output.width * 0.42, metaSize, 620, palette.ink, "right");
   drawFittedText(ctx2d, lens || "Unknown lens", right, top + footerHeight * 0.58, output.width * 0.42, smallSize, 420, palette.muted, "right");
-  drawFittedText(ctx2d, date || "No date", left + logoWidth + output.width * 0.025, top + footerHeight * 0.42, output.width * 0.18, smallSize, 420, palette.muted);
+  drawFittedText(ctx2d, [author ? byline(author) : "", date || "No date"].filter(Boolean).join("  /  "), left + logoWidth + output.width * 0.025, top + footerHeight * 0.42, output.width * 0.24, smallSize, 420, palette.muted);
 }
 
 function drawProofMetadata(
@@ -889,13 +903,13 @@ function drawProofMetadata(
   const labelSize = clamp(Math.round(output.width * 0.014), 12, 48);
   const valueSize = clamp(Math.round(output.width * 0.023), 20, 88);
   const logoSize = clamp(Math.round(output.width * 0.037), 30, 150);
-  const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
+  const { camera, cameraModel, lens, date, settingLine, title, author } = getMetadataLines(settings, exif);
 
   drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.31, output.width * 0.18, logoSize, palette.ink);
-  drawLabeledValue(ctx2d, "CAMERA", cameraModel || camera || "CAMERA", output.width * 0.39, top + footerHeight * 0.3, output.width * 0.24, labelSize, valueSize, palette);
+  drawLabeledValue(ctx2d, title ? "TITLE" : "CAMERA", title || cameraModel || camera || "CAMERA", output.width * 0.39, top + footerHeight * 0.3, output.width * 0.24, labelSize, valueSize, palette);
   drawLabeledValue(ctx2d, "EXPOSURE", settingLine, output.width * 0.71, top + footerHeight * 0.3, right - output.width * 0.71, labelSize, valueSize, palette);
   drawLabeledValue(ctx2d, "LENS", lens || "Unknown lens", left, top + footerHeight * 0.7, output.width * 0.52, labelSize, valueSize, palette);
-  drawLabeledValue(ctx2d, "DATE", date || "No date", output.width * 0.71, top + footerHeight * 0.7, right - output.width * 0.71, labelSize, valueSize, palette);
+  drawLabeledValue(ctx2d, author ? "AUTHOR" : "DATE", author || date || "No date", output.width * 0.71, top + footerHeight * 0.7, right - output.width * 0.71, labelSize, valueSize, palette);
 }
 
 function drawPosterMetadata(
@@ -913,12 +927,13 @@ function drawPosterMetadata(
   const titleSize = clamp(Math.round(output.width * 0.036), 30, 140);
   const metaSize = clamp(Math.round(output.width * 0.024), 22, 92);
   const smallSize = clamp(Math.round(output.width * 0.018), 16, 68);
-  const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
+  const { camera, cameraModel, lens, date, settingLine, title, author } = getMetadataLines(settings, exif);
+  const headline = title || cameraModel || camera || "CAMERA";
 
   drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.46, output.width * 0.25, logoSize, palette.ink);
-  drawFittedText(ctx2d, cameraModel || camera || "CAMERA", left, top + footerHeight * 0.75, output.width * 0.46, titleSize, 560, palette.ink);
+  drawFittedText(ctx2d, headline, left, top + footerHeight * 0.75, output.width * 0.46, titleSize, 560, palette.ink);
   drawFittedText(ctx2d, settingLine, right, top + footerHeight * 0.42, output.width * 0.42, metaSize, 620, palette.ink, "right");
-  drawFittedText(ctx2d, [lens, date].filter(Boolean).join("  /  "), right, top + footerHeight * 0.66, output.width * 0.42, smallSize, 420, palette.muted, "right");
+  drawFittedText(ctx2d, [author ? byline(author) : lens, date].filter(Boolean).join("  /  "), right, top + footerHeight * 0.66, output.width * 0.42, smallSize, 420, palette.muted, "right");
 }
 
 function drawPureMetadata(
@@ -934,10 +949,10 @@ function drawPureMetadata(
   const top = photo.y + photo.height;
   const logoSize = clamp(Math.round(output.width * 0.032), 26, 120);
   const metaSize = clamp(Math.round(output.width * 0.02), 18, 76);
-  const { settingLine, date } = getMetadataLines(settings, exif);
+  const { settingLine, date, title, author } = getMetadataLines(settings, exif);
 
   drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.58, output.width * 0.16, logoSize, palette.ink);
-  drawFittedText(ctx2d, [settingLine, date].filter(Boolean).join("  /  "), right, top + footerHeight * 0.58, output.width * 0.58, metaSize, 500, palette.muted, "right");
+  drawFittedText(ctx2d, [title || settingLine, author || date].filter(Boolean).join("  /  "), right, top + footerHeight * 0.58, output.width * 0.58, metaSize, 500, palette.muted, "right");
 }
 
 function drawLabeledValue(

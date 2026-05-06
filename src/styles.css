@@ -332,6 +332,42 @@ h2 {
   opacity: 0.35;
 }
 
+.text-field-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.text-field-stack label {
+  display: grid;
+  gap: 7px;
+}
+
+.text-field-stack span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.text-field-stack input {
+  width: 100%;
+  min-height: 39px;
+  border: 1px solid var(--line-soft);
+  border-radius: 13px;
+  background: var(--panel-raised);
+  color: var(--ink-soft);
+  padding: 0 12px;
+  outline: 0;
+}
+
+.text-field-stack input::placeholder {
+  color: color-mix(in srgb, var(--muted) 58%, transparent);
+}
+
+.text-field-stack input:focus {
+  border-color: #b8b8bd;
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
 .toggle-stack {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

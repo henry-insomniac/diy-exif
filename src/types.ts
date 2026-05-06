@@ -9,6 +9,8 @@ export interface RenderSettings {
   exportSize: ExportSize;
   outputFormat: OutputFormat;
   quality: number;
+  title: string;
+  author: string;
   showCamera: boolean;
   showLens: boolean;
   showDate: boolean;
