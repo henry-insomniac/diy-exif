@@ -37,6 +37,18 @@ interface Palette {
   accent: string;
 }
 
+interface FrameLayout {
+  output: ImageDimensions;
+  photo: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  footerHeight: number;
+  margin: number;
+}
+
 interface BrandLogo {
   pattern: RegExp;
   icon?: SimpleIcon;
@@ -52,6 +64,13 @@ interface BrandLogo {
 }
 
 const palettes: Record<FrameStyle, Omit<Palette, "accent">> = {
+  signature: {
+    background: "#0b0b0c",
+    photoMat: "#111113",
+    ink: "#f5f5f7",
+    muted: "#a1a1a6",
+    hairline: "#2c2c2e"
+  },
   gallery: {
     background: "#f7f7f8",
     photoMat: "#f7f7f8",
@@ -59,19 +78,33 @@ const palettes: Record<FrameStyle, Omit<Palette, "accent">> = {
     muted: "#6e6e73",
     hairline: "#d2d2d7"
   },
-  noir: {
+  editorial: {
+    background: "#f5f5f7",
+    photoMat: "#f5f5f7",
+    ink: "#111111",
+    muted: "#6e6e73",
+    hairline: "#c7c7cc"
+  },
+  proof: {
+    background: "#f7f7f8",
+    photoMat: "#f7f7f8",
+    ink: "#111111",
+    muted: "#6e6e73",
+    hairline: "#c7c7cc"
+  },
+  poster: {
     background: "#0b0b0c",
     photoMat: "#111113",
     ink: "#f5f5f7",
     muted: "#a1a1a6",
     hairline: "#2c2c2e"
   },
-  contact: {
-    background: "#f7f7f8",
-    photoMat: "#f7f7f8",
-    ink: "#111111",
-    muted: "#6e6e73",
-    hairline: "#d2d2d7"
+  pure: {
+    background: "#0b0b0c",
+    photoMat: "#0b0b0c",
+    ink: "#f5f5f7",
+    muted: "#a1a1a6",
+    hairline: "#2c2c2e"
   }
 };
 
@@ -542,8 +575,10 @@ function chooseTargetSize(
 }
 
 function estimateOutputPixels(width: number, height: number) {
-  const bottom = Math.max(96, Math.round(width * 0.105));
-  return width * (height + bottom);
+  const edge = Math.max(width, height);
+  const estimatedWidth = width + edge * 0.12;
+  const estimatedHeight = height + edge * 0.06 + width * 0.16;
+  return estimatedWidth * estimatedHeight;
 }
 
 async function createBitmap(file: File, target?: ImageDimensions): Promise<ImageBitmap> {
@@ -579,11 +614,8 @@ async function composeFrame(
   warnings: string[]
 ): Promise<RenderResult> {
   const palette = getPalette(settings.frameStyle, exif.brand);
-  const bottom = Math.max(96, Math.round(target.width * 0.105));
-  const output = {
-    width: target.width,
-    height: target.height + bottom
-  };
+  const layout = getFrameLayout(settings.frameStyle, target);
+  const { output, photo } = layout;
 
   const canvas = new OffscreenCanvas(output.width, output.height);
   const canvasContext = canvas.getContext("2d");
@@ -594,9 +626,11 @@ async function composeFrame(
   canvasContext.fillStyle = palette.background;
   canvasContext.fillRect(0, 0, output.width, output.height);
 
-  canvasContext.drawImage(bitmap, 0, 0, target.width, target.height);
-  drawStyleDetails(canvasContext, output, target, bottom, palette, settings.frameStyle);
-  drawMetadata(canvasContext, output, target, bottom, palette, settings, exif);
+  canvasContext.fillStyle = palette.photoMat;
+  canvasContext.fillRect(photo.x, photo.y, photo.width, photo.height);
+  canvasContext.drawImage(bitmap, photo.x, photo.y, photo.width, photo.height);
+  drawStyleDetails(canvasContext, layout, palette, settings.frameStyle);
+  drawFrameMetadata(canvasContext, layout, palette, settings, exif);
 
   const type = purpose === "preview" ? "image/jpeg" : settings.outputFormat;
   const quality = type === "image/png" ? undefined : settings.quality;
@@ -613,58 +647,170 @@ async function composeFrame(
 
 function getPalette(style: FrameStyle, brand: string): Palette {
   const accent =
-    style === "noir" ? "#f5f5f7" : brandAccents.find(([pattern]) => pattern.test(brand))?.[1] || "#111111";
+    style === "signature" || style === "poster" || style === "pure"
+      ? "#f5f5f7"
+      : brandAccents.find(([pattern]) => pattern.test(brand))?.[1] || "#111111";
   return { ...palettes[style], accent };
+}
+
+function getFrameLayout(style: FrameStyle, target: ImageDimensions): FrameLayout {
+  const edge = Math.max(target.width, target.height);
+  const compactFooter = clamp(Math.round(target.width * 0.075), 76, 230);
+  const standardFooter = clamp(Math.round(target.width * 0.108), 104, 330);
+  const generousFooter = clamp(Math.round(target.width * 0.15), 142, 460);
+  const galleryMat = clamp(Math.round(edge * 0.052), 56, 180);
+  const posterMat = clamp(Math.round(edge * 0.045), 48, 150);
+
+  if (style === "gallery") {
+    const footerHeight = generousFooter;
+    return {
+      output: {
+        width: target.width + galleryMat * 2,
+        height: target.height + galleryMat + footerHeight
+      },
+      photo: {
+        x: galleryMat,
+        y: galleryMat,
+        width: target.width,
+        height: target.height
+      },
+      footerHeight,
+      margin: galleryMat
+    };
+  }
+
+  if (style === "poster") {
+    const footerHeight = generousFooter;
+    return {
+      output: {
+        width: target.width + posterMat * 2,
+        height: target.height + posterMat + footerHeight
+      },
+      photo: {
+        x: posterMat,
+        y: posterMat,
+        width: target.width,
+        height: target.height
+      },
+      footerHeight,
+      margin: posterMat
+    };
+  }
+
+  const footerHeight =
+    style === "pure" ? compactFooter : style === "editorial" || style === "proof" ? generousFooter : standardFooter;
+  return {
+    output: {
+      width: target.width,
+      height: target.height + footerHeight
+    },
+    photo: {
+      x: 0,
+      y: 0,
+      width: target.width,
+      height: target.height
+    },
+    footerHeight,
+    margin: clamp(Math.round(target.width * 0.022), 28, 92)
+  };
 }
 
 function drawStyleDetails(
   ctx2d: OffscreenCanvasRenderingContext2D,
-  output: ImageDimensions,
-  target: ImageDimensions,
-  bottom: number,
+  layout: FrameLayout,
   palette: Palette,
   style: FrameStyle
 ) {
+  const { output, photo, footerHeight, margin } = layout;
   ctx2d.strokeStyle = palette.hairline;
   ctx2d.lineWidth = Math.max(1, Math.round(output.width / 1800));
   ctx2d.beginPath();
-  ctx2d.moveTo(0, target.height + 0.5);
-  ctx2d.lineTo(output.width, target.height + 0.5);
+  ctx2d.moveTo(photo.x, photo.y + photo.height + 0.5);
+  ctx2d.lineTo(photo.x + photo.width, photo.y + photo.height + 0.5);
   ctx2d.stroke();
 
-  if (style === "contact") {
+  if (style === "proof") {
+    const footerTop = photo.y + photo.height;
+    ctx2d.beginPath();
+    ctx2d.moveTo(margin, footerTop + footerHeight * 0.45);
+    ctx2d.lineTo(output.width - margin, footerTop + footerHeight * 0.45);
+    ctx2d.moveTo(output.width * 0.36, footerTop + footerHeight * 0.18);
+    ctx2d.lineTo(output.width * 0.36, output.height - footerHeight * 0.18);
+    ctx2d.moveTo(output.width * 0.68, footerTop + footerHeight * 0.18);
+    ctx2d.lineTo(output.width * 0.68, output.height - footerHeight * 0.18);
+    ctx2d.stroke();
+  }
+
+  if (style === "editorial") {
     ctx2d.fillStyle = palette.accent;
-    ctx2d.fillRect(0, output.height - Math.max(4, bottom * 0.035), Math.min(output.width * 0.18, bottom * 1.8), Math.max(4, bottom * 0.035));
+    ctx2d.fillRect(margin, output.height - Math.max(5, footerHeight * 0.034), Math.min(output.width * 0.22, footerHeight * 1.5), Math.max(4, footerHeight * 0.024));
+  }
+
+  if (style === "gallery") {
+    ctx2d.strokeStyle = colorWithAlpha(palette.ink, 0.12);
+    ctx2d.strokeRect(photo.x - 0.5, photo.y - 0.5, photo.width + 1, photo.height + 1);
   }
 }
 
-function drawMetadata(
+function drawFrameMetadata(
   ctx2d: OffscreenCanvasRenderingContext2D,
-  output: ImageDimensions,
-  target: ImageDimensions,
-  bottom: number,
+  layout: FrameLayout,
   palette: Palette,
   settings: RenderRequest["settings"],
   exif: ExifSummary
 ) {
-  const inset = Math.max(28, Math.round(output.width * 0.022));
-  const left = inset;
-  const right = output.width - inset;
-  const top = target.height;
-  const primaryY = top + bottom * 0.42;
-  const secondaryY = top + bottom * 0.68;
-  const logoSize = clamp(Math.round(output.width * 0.031), 24, 58);
-  const primarySize = clamp(Math.round(output.width * 0.021), 19, 40);
-  const metaSize = clamp(Math.round(output.width * 0.017), 16, 34);
-  const smallSize = clamp(Math.round(output.width * 0.014), 13, 26);
+  switch (settings.frameStyle) {
+    case "gallery":
+      drawGalleryMetadata(ctx2d, layout, palette, settings, exif);
+      return;
+    case "editorial":
+      drawEditorialMetadata(ctx2d, layout, palette, settings, exif);
+      return;
+    case "proof":
+      drawProofMetadata(ctx2d, layout, palette, settings, exif);
+      return;
+    case "poster":
+      drawPosterMetadata(ctx2d, layout, palette, settings, exif);
+      return;
+    case "pure":
+      drawPureMetadata(ctx2d, layout, palette, settings, exif);
+      return;
+    default:
+      drawSignatureMetadata(ctx2d, layout, palette, settings, exif);
+  }
+}
+
+function getMetadataLines(settings: RenderRequest["settings"], exif: ExifSummary) {
   const camera = settings.showCamera ? exif.display.camera : "";
   const cameraModel = camera.replace(new RegExp(`^${escapeRegExp(exif.brand)}\\s*`, "i"), "");
   const lens = settings.showLens ? exif.display.lens : "";
   const date = settings.showDate ? exif.display.date : "";
   const settingLine = exif.display.settingsLine || "EXIF unavailable";
 
+  return { camera, cameraModel, lens, date, settingLine };
+}
+
+function drawSignatureMetadata(
+  ctx2d: OffscreenCanvasRenderingContext2D,
+  layout: FrameLayout,
+  palette: Palette,
+  settings: RenderRequest["settings"],
+  exif: ExifSummary
+) {
+  const { output, photo, footerHeight } = layout;
+  const left = layout.margin;
+  const right = output.width - layout.margin;
+  const top = photo.y + photo.height;
+  const primaryY = top + footerHeight * 0.42;
+  const secondaryY = top + footerHeight * 0.68;
+  const logoSize = clamp(Math.round(output.width * 0.031), 24, 58);
+  const primarySize = clamp(Math.round(output.width * 0.021), 19, 40);
+  const metaSize = clamp(Math.round(output.width * 0.017), 16, 34);
+  const smallSize = clamp(Math.round(output.width * 0.014), 13, 26);
+  const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
+
   ctx2d.fillStyle = palette.accent;
-  ctx2d.fillRect(left, output.height - Math.max(8, bottom * 0.09), Math.min(output.width * 0.16, bottom * 1.5), Math.max(4, bottom * 0.035));
+  ctx2d.fillRect(left, output.height - Math.max(8, footerHeight * 0.09), Math.min(output.width * 0.16, footerHeight * 1.5), Math.max(4, footerHeight * 0.035));
 
   const narrow = output.width < 920;
   if (narrow) {
@@ -681,6 +827,132 @@ function drawMetadata(
   drawFittedText(ctx2d, settingLine, right, primaryY, output.width * 0.46, metaSize, 560, palette.ink, "right");
   drawFittedText(ctx2d, lens || "Unknown lens", left, secondaryY, output.width * 0.5, smallSize, 400, palette.muted);
   drawFittedText(ctx2d, date || "No date", right, secondaryY, output.width * 0.28, smallSize, 400, palette.muted, "right");
+}
+
+function drawGalleryMetadata(
+  ctx2d: OffscreenCanvasRenderingContext2D,
+  layout: FrameLayout,
+  palette: Palette,
+  settings: RenderRequest["settings"],
+  exif: ExifSummary
+) {
+  const { output, photo, footerHeight } = layout;
+  const left = photo.x;
+  const right = photo.x + photo.width;
+  const top = photo.y + photo.height;
+  const logoSize = clamp(Math.round(output.width * 0.02), 18, 42);
+  const titleSize = clamp(Math.round(output.width * 0.014), 14, 28);
+  const detailSize = clamp(Math.round(output.width * 0.011), 11, 21);
+  const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
+
+  const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.4, output.width * 0.16, logoSize, palette.ink);
+  drawFittedText(ctx2d, cameraModel || camera || "CAMERA", left + logoWidth + output.width * 0.018, top + footerHeight * 0.4, output.width * 0.34, titleSize, 500, palette.muted);
+  drawFittedText(ctx2d, [lens, settingLine].filter(Boolean).join("  /  "), left, top + footerHeight * 0.66, output.width * 0.58, detailSize, 420, palette.muted);
+  drawFittedText(ctx2d, date || "No date", right, top + footerHeight * 0.66, output.width * 0.24, detailSize, 420, palette.muted, "right");
+}
+
+function drawEditorialMetadata(
+  ctx2d: OffscreenCanvasRenderingContext2D,
+  layout: FrameLayout,
+  palette: Palette,
+  settings: RenderRequest["settings"],
+  exif: ExifSummary
+) {
+  const { output, photo, footerHeight } = layout;
+  const left = layout.margin;
+  const right = output.width - layout.margin;
+  const top = photo.y + photo.height;
+  const logoSize = clamp(Math.round(output.width * 0.045), 34, 92);
+  const titleSize = clamp(Math.round(output.width * 0.021), 18, 42);
+  const metaSize = clamp(Math.round(output.width * 0.014), 13, 28);
+  const smallSize = clamp(Math.round(output.width * 0.011), 11, 22);
+  const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
+
+  const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.42, output.width * 0.23, logoSize, palette.ink);
+  drawFittedText(ctx2d, cameraModel || camera || "CAMERA", left, top + footerHeight * 0.67, output.width * 0.4, titleSize, 520, palette.ink);
+  drawFittedText(ctx2d, settingLine, right, top + footerHeight * 0.37, output.width * 0.42, metaSize, 620, palette.ink, "right");
+  drawFittedText(ctx2d, lens || "Unknown lens", right, top + footerHeight * 0.58, output.width * 0.42, smallSize, 420, palette.muted, "right");
+  drawFittedText(ctx2d, date || "No date", left + logoWidth + output.width * 0.025, top + footerHeight * 0.42, output.width * 0.18, smallSize, 420, palette.muted);
+}
+
+function drawProofMetadata(
+  ctx2d: OffscreenCanvasRenderingContext2D,
+  layout: FrameLayout,
+  palette: Palette,
+  settings: RenderRequest["settings"],
+  exif: ExifSummary
+) {
+  const { output, photo, footerHeight } = layout;
+  const left = layout.margin;
+  const right = output.width - layout.margin;
+  const top = photo.y + photo.height;
+  const labelSize = clamp(Math.round(output.width * 0.009), 9, 16);
+  const valueSize = clamp(Math.round(output.width * 0.014), 13, 27);
+  const logoSize = clamp(Math.round(output.width * 0.024), 20, 46);
+  const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
+
+  drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.31, output.width * 0.18, logoSize, palette.ink);
+  drawLabeledValue(ctx2d, "CAMERA", cameraModel || camera || "CAMERA", output.width * 0.39, top + footerHeight * 0.3, output.width * 0.24, labelSize, valueSize, palette);
+  drawLabeledValue(ctx2d, "EXPOSURE", settingLine, output.width * 0.71, top + footerHeight * 0.3, right - output.width * 0.71, labelSize, valueSize, palette);
+  drawLabeledValue(ctx2d, "LENS", lens || "Unknown lens", left, top + footerHeight * 0.7, output.width * 0.52, labelSize, valueSize, palette);
+  drawLabeledValue(ctx2d, "DATE", date || "No date", output.width * 0.71, top + footerHeight * 0.7, right - output.width * 0.71, labelSize, valueSize, palette);
+}
+
+function drawPosterMetadata(
+  ctx2d: OffscreenCanvasRenderingContext2D,
+  layout: FrameLayout,
+  palette: Palette,
+  settings: RenderRequest["settings"],
+  exif: ExifSummary
+) {
+  const { output, photo, footerHeight } = layout;
+  const left = photo.x;
+  const right = photo.x + photo.width;
+  const top = photo.y + photo.height;
+  const logoSize = clamp(Math.round(output.width * 0.058), 42, 124);
+  const titleSize = clamp(Math.round(output.width * 0.023), 20, 48);
+  const metaSize = clamp(Math.round(output.width * 0.014), 13, 28);
+  const smallSize = clamp(Math.round(output.width * 0.011), 11, 22);
+  const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
+
+  drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.46, output.width * 0.25, logoSize, palette.ink);
+  drawFittedText(ctx2d, cameraModel || camera || "CAMERA", left, top + footerHeight * 0.75, output.width * 0.46, titleSize, 560, palette.ink);
+  drawFittedText(ctx2d, settingLine, right, top + footerHeight * 0.42, output.width * 0.42, metaSize, 620, palette.ink, "right");
+  drawFittedText(ctx2d, [lens, date].filter(Boolean).join("  /  "), right, top + footerHeight * 0.66, output.width * 0.42, smallSize, 420, palette.muted, "right");
+}
+
+function drawPureMetadata(
+  ctx2d: OffscreenCanvasRenderingContext2D,
+  layout: FrameLayout,
+  palette: Palette,
+  settings: RenderRequest["settings"],
+  exif: ExifSummary
+) {
+  const { output, photo, footerHeight } = layout;
+  const left = layout.margin;
+  const right = output.width - layout.margin;
+  const top = photo.y + photo.height;
+  const logoSize = clamp(Math.round(output.width * 0.021), 18, 40);
+  const metaSize = clamp(Math.round(output.width * 0.013), 12, 24);
+  const { settingLine, date } = getMetadataLines(settings, exif);
+
+  drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.58, output.width * 0.16, logoSize, palette.ink);
+  drawFittedText(ctx2d, [settingLine, date].filter(Boolean).join("  /  "), right, top + footerHeight * 0.58, output.width * 0.58, metaSize, 500, palette.muted, "right");
+}
+
+function drawLabeledValue(
+  ctx2d: OffscreenCanvasRenderingContext2D,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  labelSize: number,
+  valueSize: number,
+  palette: Palette
+) {
+  drawFittedText(ctx2d, label, x, y - valueSize * 0.8, maxWidth, labelSize, 650, palette.muted);
+  drawFittedText(ctx2d, value, x, y, maxWidth, valueSize, 520, palette.ink);
 }
 
 function drawBrandLogo(
@@ -804,4 +1076,18 @@ function drawFittedText(
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
+}
+
+function colorWithAlpha(color: string, alpha: number) {
+  if (!color.startsWith("#") || (color.length !== 7 && color.length !== 4)) return color;
+
+  const normalized =
+    color.length === 4
+      ? `#${color[1]}${color[1]}${color[2]}${color[2]}${color[3]}${color[3]}`
+      : color;
+  const red = Number.parseInt(normalized.slice(1, 3), 16);
+  const green = Number.parseInt(normalized.slice(3, 5), 16);
+  const blue = Number.parseInt(normalized.slice(5, 7), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }

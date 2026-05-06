@@ -1,4 +1,4 @@
-export type FrameStyle = "gallery" | "noir" | "contact";
+export type FrameStyle = "signature" | "gallery" | "editorial" | "proof" | "poster" | "pure";
 
 export type ExportSize = "preview" | "social" | "high" | "source";
 

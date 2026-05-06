@@ -26,9 +26,12 @@ import type {
 type PreviewState = RenderResult & { url: string };
 
 const styleOptions: Array<{ value: FrameStyle; label: string }> = [
-  { value: "gallery", label: "白场" },
-  { value: "noir", label: "黑场" },
-  { value: "contact", label: "印样" }
+  { value: "signature", label: "签名" },
+  { value: "gallery", label: "画廊" },
+  { value: "editorial", label: "杂志" },
+  { value: "proof", label: "校样" },
+  { value: "poster", label: "海报" },
+  { value: "pure", label: "纯净" }
 ];
 
 const exportOptions: Array<{ value: ExportSize; label: string; hint: string }> = [
@@ -43,7 +46,7 @@ const formatOptions: Array<{ value: OutputFormat; label: string }> = [
 ];
 
 const defaultSettings: RenderSettings = {
-  frameStyle: "noir",
+  frameStyle: "signature",
   exportSize: "social",
   outputFormat: "image/jpeg",
   quality: 0.92,
