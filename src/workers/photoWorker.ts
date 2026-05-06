@@ -1,7 +1,15 @@
 /// <reference lib="webworker" />
 
 import exifr from "exifr";
-import { siNikon } from "simple-icons";
+import {
+  siApple,
+  siDji,
+  siFujifilm,
+  siLeica,
+  siNikon,
+  siPanasonic,
+  siSony
+} from "simple-icons";
 import type { SimpleIcon } from "simple-icons";
 import type {
   ExifDisplay,
@@ -31,8 +39,11 @@ interface Palette {
 
 interface BrandLogo {
   pattern: RegExp;
-  icon: SimpleIcon;
-  crop: {
+  icon?: SimpleIcon;
+  label?: string;
+  weight?: number;
+  tracking?: number;
+  crop?: {
     x: number;
     y: number;
     width: number;
@@ -97,14 +108,110 @@ const cameraBrands: Array<[RegExp, string]> = [
 
 const brandLogos: BrandLogo[] = [
   {
+    pattern: /canon/i,
+    label: "CANON",
+    weight: 650,
+    tracking: -0.035
+  },
+  {
     pattern: /nikon/i,
     icon: siNikon,
     crop: {
       x: 0,
-      y: 8.55,
-      width: 24,
-      height: 6.75
+      y: 8.681,
+      width: 24.092,
+      height: 6.73
     }
+  },
+  {
+    pattern: /sony/i,
+    icon: siSony,
+    crop: {
+      x: -0.001,
+      y: 9.888,
+      width: 24.001,
+      height: 4.224
+    }
+  },
+  {
+    pattern: /fuji|fujifilm/i,
+    icon: siFujifilm,
+    crop: {
+      x: 0,
+      y: 9.987,
+      width: 24,
+      height: 4.038
+    }
+  },
+  {
+    pattern: /leica/i,
+    icon: siLeica,
+    crop: {
+      x: 0,
+      y: 0,
+      width: 24,
+      height: 24
+    }
+  },
+  {
+    pattern: /hasselblad/i,
+    label: "HASSELBLAD",
+    weight: 560,
+    tracking: 0.015
+  },
+  {
+    pattern: /ricoh/i,
+    label: "RICOH",
+    weight: 650,
+    tracking: 0.015
+  },
+  {
+    pattern: /apple/i,
+    icon: siApple,
+    crop: {
+      x: 1.114,
+      y: 0,
+      width: 20.661,
+      height: 24.05
+    }
+  },
+  {
+    pattern: /dji/i,
+    icon: siDji,
+    crop: {
+      x: 0,
+      y: 4.92,
+      width: 24,
+      height: 14.168
+    }
+  },
+  {
+    pattern: /panasonic|lumix/i,
+    icon: siPanasonic,
+    crop: {
+      x: 0,
+      y: 10.161,
+      width: 24.017,
+      height: 3.703
+    }
+  },
+  {
+    pattern: /olympus/i,
+    label: "OLYMPUS",
+    weight: 600,
+    tracking: 0.035
+  },
+  {
+    pattern: /om system/i,
+    label: "OM SYSTEM",
+    weight: 560,
+    tracking: 0.02
+  },
+  {
+    pattern: /pentax/i,
+    label: "PENTAX",
+    weight: 650,
+    tracking: 0.02
   }
 ];
 
@@ -586,8 +693,22 @@ function drawBrandLogo(
   color: string
 ) {
   const logo = brandLogos.find((candidate) => candidate.pattern.test(brand));
-  if (!logo || typeof Path2D === "undefined") {
+  if (!logo) {
     return drawFittedText(ctx2d, brand || "CAMERA", x, baselineY, maxWidth, maxHeight, 650, color);
+  }
+
+  if (!logo.icon || !logo.crop || typeof Path2D === "undefined") {
+    return drawWordmark(
+      ctx2d,
+      logo.label || brand || "CAMERA",
+      x,
+      baselineY,
+      maxWidth,
+      maxHeight,
+      logo.weight ?? 650,
+      logo.tracking ?? 0,
+      color
+    );
   }
 
   const path = new Path2D(logo.icon.path);
@@ -603,6 +724,56 @@ function drawBrandLogo(
   ctx2d.restore();
 
   return width;
+}
+
+function drawWordmark(
+  ctx2d: OffscreenCanvasRenderingContext2D,
+  text: string,
+  x: number,
+  baselineY: number,
+  maxWidth: number,
+  maxHeight: number,
+  weight: number,
+  trackingRatio: number,
+  color: string
+) {
+  let fontSize = maxHeight;
+  let tracking = fontSize * trackingRatio;
+  let width = measureTrackedText(ctx2d, text, fontSize, weight, tracking);
+
+  while (width > maxWidth && fontSize > 11) {
+    fontSize -= 1;
+    tracking = fontSize * trackingRatio;
+    width = measureTrackedText(ctx2d, text, fontSize, weight, tracking);
+  }
+
+  ctx2d.save();
+  ctx2d.textBaseline = "alphabetic";
+  ctx2d.textAlign = "left";
+  ctx2d.fillStyle = color;
+  ctx2d.font = `${weight} ${fontSize}px ${FONT_STACK}`;
+
+  let cursor = x;
+  for (const char of text) {
+    ctx2d.fillText(char, cursor, baselineY);
+    cursor += ctx2d.measureText(char).width + tracking;
+  }
+
+  ctx2d.restore();
+  return Math.min(width, maxWidth);
+}
+
+function measureTrackedText(
+  ctx2d: OffscreenCanvasRenderingContext2D,
+  text: string,
+  fontSize: number,
+  weight: number,
+  tracking: number
+) {
+  ctx2d.font = `${weight} ${fontSize}px ${FONT_STACK}`;
+  return Array.from(text).reduce((width, char, index) => {
+    return width + ctx2d.measureText(char).width + (index < text.length - 1 ? tracking : 0);
+  }, 0);
 }
 
 function drawFittedText(
