@@ -655,9 +655,9 @@ function getPalette(style: FrameStyle, brand: string): Palette {
 
 function getFrameLayout(style: FrameStyle, target: ImageDimensions): FrameLayout {
   const edge = Math.max(target.width, target.height);
-  const compactFooter = clamp(Math.round(target.width * 0.075), 76, 230);
-  const standardFooter = clamp(Math.round(target.width * 0.108), 104, 330);
-  const generousFooter = clamp(Math.round(target.width * 0.15), 142, 460);
+  const compactFooter = clamp(Math.round(target.width * 0.105), 120, 520);
+  const standardFooter = clamp(Math.round(target.width * 0.135), 160, 900);
+  const generousFooter = clamp(Math.round(target.width * 0.19), 220, 1200);
   const galleryMat = clamp(Math.round(edge * 0.052), 56, 180);
   const posterMat = clamp(Math.round(edge * 0.045), 48, 150);
 
@@ -803,10 +803,10 @@ function drawSignatureMetadata(
   const top = photo.y + photo.height;
   const primaryY = top + footerHeight * 0.42;
   const secondaryY = top + footerHeight * 0.68;
-  const logoSize = clamp(Math.round(output.width * 0.031), 24, 58);
-  const primarySize = clamp(Math.round(output.width * 0.021), 19, 40);
-  const metaSize = clamp(Math.round(output.width * 0.017), 16, 34);
-  const smallSize = clamp(Math.round(output.width * 0.014), 13, 26);
+  const logoSize = clamp(Math.round(output.width * 0.044), 36, 190);
+  const primarySize = clamp(Math.round(output.width * 0.032), 28, 130);
+  const metaSize = clamp(Math.round(output.width * 0.026), 24, 105);
+  const smallSize = clamp(Math.round(output.width * 0.019), 18, 76);
   const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
 
   ctx2d.fillStyle = palette.accent;
@@ -814,7 +814,7 @@ function drawSignatureMetadata(
 
   const narrow = output.width < 920;
   if (narrow) {
-    const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, primaryY - metaSize * 0.55, output.width * 0.28, primarySize, palette.ink);
+    const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, primaryY - metaSize * 0.55, output.width * 0.32, primarySize * 1.08, palette.ink);
     const narrowModelX = left + logoWidth + Math.max(12, output.width * 0.014);
     drawFittedText(ctx2d, cameraModel || camera || "CAMERA", narrowModelX, primaryY - metaSize * 0.55, right - narrowModelX, primarySize, 520, palette.muted);
     drawFittedText(ctx2d, settingLine, left, primaryY + metaSize * 0.9, right - left, metaSize, 560, palette.ink);
@@ -822,7 +822,7 @@ function drawSignatureMetadata(
     return;
   }
 
-  const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, primaryY, output.width * 0.2, logoSize * 0.82, palette.ink);
+  const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, primaryY, output.width * 0.24, logoSize, palette.ink);
   drawFittedText(ctx2d, cameraModel || camera || "CAMERA", left + logoWidth + Math.max(18, output.width * 0.018), primaryY, output.width * 0.28, primarySize, 500, palette.muted);
   drawFittedText(ctx2d, settingLine, right, primaryY, output.width * 0.46, metaSize, 560, palette.ink, "right");
   drawFittedText(ctx2d, lens || "Unknown lens", left, secondaryY, output.width * 0.5, smallSize, 400, palette.muted);
@@ -840,9 +840,9 @@ function drawGalleryMetadata(
   const left = photo.x;
   const right = photo.x + photo.width;
   const top = photo.y + photo.height;
-  const logoSize = clamp(Math.round(output.width * 0.02), 18, 42);
-  const titleSize = clamp(Math.round(output.width * 0.014), 14, 28);
-  const detailSize = clamp(Math.round(output.width * 0.011), 11, 21);
+  const logoSize = clamp(Math.round(output.width * 0.032), 28, 120);
+  const titleSize = clamp(Math.round(output.width * 0.022), 20, 82);
+  const detailSize = clamp(Math.round(output.width * 0.017), 16, 62);
   const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
 
   const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.4, output.width * 0.16, logoSize, palette.ink);
@@ -862,10 +862,10 @@ function drawEditorialMetadata(
   const left = layout.margin;
   const right = output.width - layout.margin;
   const top = photo.y + photo.height;
-  const logoSize = clamp(Math.round(output.width * 0.045), 34, 92);
-  const titleSize = clamp(Math.round(output.width * 0.021), 18, 42);
-  const metaSize = clamp(Math.round(output.width * 0.014), 13, 28);
-  const smallSize = clamp(Math.round(output.width * 0.011), 11, 22);
+  const logoSize = clamp(Math.round(output.width * 0.058), 44, 220);
+  const titleSize = clamp(Math.round(output.width * 0.032), 26, 124);
+  const metaSize = clamp(Math.round(output.width * 0.023), 20, 88);
+  const smallSize = clamp(Math.round(output.width * 0.017), 16, 66);
   const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
 
   const logoWidth = drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.42, output.width * 0.23, logoSize, palette.ink);
@@ -886,9 +886,9 @@ function drawProofMetadata(
   const left = layout.margin;
   const right = output.width - layout.margin;
   const top = photo.y + photo.height;
-  const labelSize = clamp(Math.round(output.width * 0.009), 9, 16);
-  const valueSize = clamp(Math.round(output.width * 0.014), 13, 27);
-  const logoSize = clamp(Math.round(output.width * 0.024), 20, 46);
+  const labelSize = clamp(Math.round(output.width * 0.014), 12, 48);
+  const valueSize = clamp(Math.round(output.width * 0.023), 20, 88);
+  const logoSize = clamp(Math.round(output.width * 0.037), 30, 150);
   const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
 
   drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.31, output.width * 0.18, logoSize, palette.ink);
@@ -909,10 +909,10 @@ function drawPosterMetadata(
   const left = photo.x;
   const right = photo.x + photo.width;
   const top = photo.y + photo.height;
-  const logoSize = clamp(Math.round(output.width * 0.058), 42, 124);
-  const titleSize = clamp(Math.round(output.width * 0.023), 20, 48);
-  const metaSize = clamp(Math.round(output.width * 0.014), 13, 28);
-  const smallSize = clamp(Math.round(output.width * 0.011), 11, 22);
+  const logoSize = clamp(Math.round(output.width * 0.074), 54, 280);
+  const titleSize = clamp(Math.round(output.width * 0.036), 30, 140);
+  const metaSize = clamp(Math.round(output.width * 0.024), 22, 92);
+  const smallSize = clamp(Math.round(output.width * 0.018), 16, 68);
   const { camera, cameraModel, lens, date, settingLine } = getMetadataLines(settings, exif);
 
   drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.46, output.width * 0.25, logoSize, palette.ink);
@@ -932,8 +932,8 @@ function drawPureMetadata(
   const left = layout.margin;
   const right = output.width - layout.margin;
   const top = photo.y + photo.height;
-  const logoSize = clamp(Math.round(output.width * 0.021), 18, 40);
-  const metaSize = clamp(Math.round(output.width * 0.013), 12, 24);
+  const logoSize = clamp(Math.round(output.width * 0.032), 26, 120);
+  const metaSize = clamp(Math.round(output.width * 0.02), 18, 76);
   const { settingLine, date } = getMetadataLines(settings, exif);
 
   drawBrandLogo(ctx2d, exif.brand, left, top + footerHeight * 0.58, output.width * 0.16, logoSize, palette.ink);
